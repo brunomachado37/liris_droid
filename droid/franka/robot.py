@@ -7,7 +7,7 @@ import numpy as np
 import torch
 from polymetis import GripperInterface, RobotInterface
 
-from droid.misc.parameters import sudo_password
+from droid.misc.parameters import sudo_password, gripper_type
 from droid.misc.subprocess_utils import run_terminal_command, run_threaded_command
 
 # UTILITY SPECIFIC IMPORTS
@@ -38,6 +38,7 @@ class FrankaRobot:
         self._max_gripper_width = self._gripper.metadata.max_width
         self._ik_solver = RobotIKSolver()
         self._controller_not_loaded = False
+        self._previous_gripper_command = 0.0
 
     def kill_controller(self):
         self._robot_process.kill()
@@ -120,7 +121,18 @@ class FrankaRobot:
             command = gripper_delta + self.get_gripper_position()
 
         command = float(np.clip(command, 0, 1))
-        self._gripper.goto(width=self._max_gripper_width * (1 - command), speed=0.05, force=0.1, blocking=blocking)
+        if gripper_type == "franka":
+            if command <= 0.5:
+                self._gripper.goto(width=self._max_gripper_width, speed=0.05, force=0.1, blocking=blocking)
+            elif self._previous_gripper_command > 0.5:
+                pass
+            else:
+                self._gripper.grasp(speed=0.05, force=0.1, blocking=blocking)
+
+            self._previous_gripper_command = command
+            
+        else:
+            self._gripper.goto(width=self._max_gripper_width * (1 - command), speed=0.05, force=0.1, blocking=blocking)
 
     def add_noise_to_joints(self, original_joints, cartesian_noise):
         original_joints = torch.Tensor(original_joints)
@@ -198,13 +210,16 @@ class FrankaRobot:
         if gripper_action_space is None:
             gripper_action_space = "velocity" if velocity else "position"
         assert gripper_action_space in ["velocity", "position"]
-            
-
+  
         if gripper_action_space == "velocity":
-            action_dict["gripper_velocity"] = action[-1]
-            gripper_delta = self._ik_solver.gripper_velocity_to_delta(action[-1])
-            gripper_position = robot_state["gripper_position"] + gripper_delta
-            action_dict["gripper_position"] = float(np.clip(gripper_position, 0, 1))
+            if gripper_type == "franka":
+                action_dict["gripper_velocity"] = action[-1]
+                action_dict["gripper_position"] = float(action[-1] > 0.0)
+            else:
+                action_dict["gripper_velocity"] = action[-1]
+                gripper_delta = self._ik_solver.gripper_velocity_to_delta(action[-1])
+                gripper_position = robot_state["gripper_position"] + gripper_delta
+                action_dict["gripper_position"] = float(np.clip(gripper_position, 0, 1))
         else:
             action_dict["gripper_position"] = float(np.clip(action[-1], 0, 1))
             gripper_delta = action_dict["gripper_position"] - robot_state["gripper_position"]
