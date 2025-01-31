@@ -14,7 +14,7 @@ import pyzed.sl as sl
 from tqdm import tqdm
 
 
-def export_mp4(svo_file: Path, mp4_dir: Path, stereo_view: str = "left", show_progress: bool = False) -> bool:
+def export_mp4(svo_file: Path, mp4_dir: Path, stereo_view: str = "left", show_progress: bool = False, fps=None) -> bool:
     """Reads an SVO file, dumping the export MP4 to the desired path; supports ZED SDK 3.8.* and 4.0.* ONLY."""
     mp4_out = mp4_dir / f"{svo_file.stem}.mp4"
     sdk_version, use_sdk_4 = sl.Camera().get_sdk_version(), None
@@ -39,11 +39,11 @@ def export_mp4(svo_file: Path, mp4_dir: Path, stereo_view: str = "left", show_pr
 
     # [NOTE SDK SEMANTICS] --> Get Image Size & FPS
     if use_sdk_4:
-        fps = zed.get_camera_information().camera_configuration.fps
+        fps = fps if fps is not None else zed.get_camera_information().camera_configuration.fps
         resolution = zed.get_camera_information().camera_configuration.resolution
         width, height = resolution.width, resolution.height
     else:
-        fps = zed.get_camera_information().camera_fps
+        fps = fps if fps is not None else zed.get_camera_information().camera_fps
         resolution = zed.get_camera_information().camera_resolution
         width, height = resolution.width, resolution.height
 
@@ -103,16 +103,17 @@ def convert_mp4s(
     demo_dir: Path,
     wrist_serial: str,
     ext1_serial: str,
-    ext2_serial: str,
     ext1_extrinsics: List[float],
-    ext2_extrinsics: List[float],
+    ext2_serial: str=None,
+    ext2_extrinsics: List[float]=None,
     do_fuse: bool = False,
+    fps: int = None,
 ) -> Tuple[bool, Optional[Dict[str, str]]]:
     """Convert each `serial.svo` to a valid MP4 file, updating the `data_record` path entries in-place."""
     svo_path, mp4_path = demo_dir / "recordings" / "SVO", demo_dir / "recordings" / "MP4"
     os.makedirs(mp4_path, exist_ok=True)
     for svo_file in svo_path.iterdir():
-        successful_convert = export_mp4(svo_file, mp4_path, show_progress=True)
+        successful_convert = export_mp4(svo_file, mp4_path, show_progress=True, fps=fps)
         if not successful_convert:
             return False, None
 
@@ -121,22 +122,32 @@ def convert_mp4s(
     #       - `pos` is (x, y, z) offset --> moving left of robot is +y, moving right is -y
     #       - `rot` is rotation offset as Euler (`R.from_matrix(rmat).as_euler("xyz")`)
     #   => Therefore we can compute `left = ext1_serial if ext1_extrinsics[1] > ext2_extrinsics[1]`
-    ext1_y, ext2_y = ext1_extrinsics[1], ext2_extrinsics[1]
+    ext1_y, ext2_y = ext1_extrinsics[1], ext2_extrinsics[1] if ext2_extrinsics is not None else -1
     left_serial = ext1_serial if ext1_y > ext2_y else ext2_serial
     right_serial = ext2_serial if left_serial == ext1_serial else ext1_serial
 
     # Create Dictionary of SVO/MP4 Paths
     rel_svo_path, rel_mp4_path = svo_path.relative_to(data_dir), mp4_path.relative_to(data_dir)
-    record_paths = {
-        "wrist_svo_path": str(rel_svo_path / f"{wrist_serial}.svo"),
-        "wrist_mp4_path": str(rel_mp4_path / f"{wrist_serial}.mp4"),
-        "ext1_svo_path": str(rel_svo_path / f"{ext1_serial}.svo"),
-        "ext1_mp4_path": str(rel_mp4_path / f"{ext1_serial}.mp4"),
-        "ext2_svo_path": str(rel_svo_path / f"{ext2_serial}.svo"),
-        "ext2_mp4_path": str(rel_mp4_path / f"{ext2_serial}.mp4"),
-        "left_mp4_path": str(rel_mp4_path / f"{left_serial}.mp4"),
-        "right_mp4_path": str(rel_mp4_path / f"{right_serial}.mp4"),
-    }
+    if ext2_serial is None:
+        record_paths = {
+            "wrist_svo_path": str(rel_svo_path / f"{wrist_serial}.svo"),
+            "wrist_mp4_path": str(rel_mp4_path / f"{wrist_serial}.mp4"),
+            "ext1_svo_path": str(rel_svo_path / f"{ext1_serial}.svo"),
+            "ext1_mp4_path": str(rel_mp4_path / f"{ext1_serial}.mp4"),
+            "left_mp4_path": str(rel_mp4_path / f"{left_serial}.mp4"),
+            "right_mp4_path": str(rel_mp4_path / f"{right_serial}.mp4"),
+        }
+    else:
+        record_paths = {
+            "wrist_svo_path": str(rel_svo_path / f"{wrist_serial}.svo"),
+            "wrist_mp4_path": str(rel_mp4_path / f"{wrist_serial}.mp4"),
+            "ext1_svo_path": str(rel_svo_path / f"{ext1_serial}.svo"),
+            "ext1_mp4_path": str(rel_mp4_path / f"{ext1_serial}.mp4"),
+            "ext2_svo_path": str(rel_svo_path / f"{ext2_serial}.svo"),
+            "ext2_mp4_path": str(rel_mp4_path / f"{ext2_serial}.mp4"),
+            "left_mp4_path": str(rel_mp4_path / f"{left_serial}.mp4"),
+            "right_mp4_path": str(rel_mp4_path / f"{right_serial}.mp4"),
+        }
 
     if do_fuse:
         # Build Fused Left/Right MP4 Files via FFMPEG

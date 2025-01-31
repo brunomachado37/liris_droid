@@ -43,9 +43,11 @@ def run_indexing(
     scanned_paths: Dict[str, Dict[str, str]],
     indexed_uuids: Dict[str, Dict[str, str]],
     errored_paths: Dict[str, Dict[str, str]],
+    end_datetime: datetime=None,
     search_existing_metadata: bool = False,
     lab_agnostic: bool = False,
     process_failures: bool = True,
+    num_cameras: int = 3,
 ) -> None:
     """Index data by iterating through each "success/ | failure/" --> <DAY>/ --> <TIMESTAMP>/ (specified trajectory)."""
     progress = tqdm(desc="[*] Stage 1 =>> Indexing")
@@ -60,6 +62,8 @@ def run_indexing(
         day_dirs = sorted([p for p in outcome_dir.iterdir() if p.is_dir() and validate_day_dir(p)])
         for day_dir, day in [(p, p.name) for p in day_dirs]:
             if parse_datetime(day) < start_datetime:
+                continue
+            if end_datetime is not None and parse_datetime(day) > end_datetime:
                 continue
 
             for trajectory_dir in [p for p in day_dir.iterdir() if p.is_dir()]:
@@ -94,11 +98,11 @@ def run_indexing(
                     continue
 
                 # Verify SVO Files
-                if not validate_svo_existence(trajectory_dir):
+                if not validate_svo_existence(trajectory_dir, num_cameras):
                     scanned_paths[outcome][rel_trajectory_dir] = True
                     errored_paths[outcome][rel_trajectory_dir] = (
                         "[Indexing Error] Missing SVO Files! "
-                        "Ensure all 3 SVO files are in `<timestamp>/recordings/SVO/<serial>.svo!"
+                        f"Ensure all {num_cameras} SVO files are in `<timestamp>/recordings/SVO/<serial>.svo!"
                     )
                     totals["scanned"][outcome] = len(scanned_paths[outcome])
                     totals["errored"][outcome] = len(errored_paths[outcome])
@@ -131,6 +135,8 @@ def run_processing(
     extract_depth_data: bool = False,
     depth_resolution: tuple = (0,0),
     depth_frequency: int = 1,
+    num_cameras: int = 3,
+    fps: int = None,
 ) -> None:
     """Iterate through each trajectory in `indexed_uuids` and 1) extract JSON metadata and 2) convert SVO -> MP4."""
     for outcome in indexed_uuids:
@@ -158,7 +164,7 @@ def run_processing(
 
                 # Run Metadata Extraction --> JSON-serializable Data Record + Validation
                 valid_parse, metadata_record = parse_trajectory(
-                    data_dir, trajectory_dir, uuid, lab, user, user_id, timestamp
+                    data_dir, trajectory_dir, uuid, lab, user, user_id, timestamp, num_cameras
                 )
             if not valid_parse:
                 errored_paths[outcome][rel_trajectory_dir] = "[Processing Error] JSON Metadata Parse Error"
@@ -172,9 +178,10 @@ def run_processing(
                     trajectory_dir,
                     metadata_record["wrist_cam_serial"],
                     metadata_record["ext1_cam_serial"],
-                    metadata_record["ext2_cam_serial"],
                     metadata_record["ext1_cam_extrinsics"],
-                    metadata_record["ext2_cam_extrinsics"],
+                    ext2_serial=metadata_record["ext2_cam_serial"] if num_cameras == 3 else None,
+                    ext2_extrinsics=metadata_record["ext2_cam_extrinsics"] if num_cameras == 3 else None,
+                    fps=fps
                 )
                 if not valid_convert:
                     errored_paths[outcome][rel_trajectory_dir] = "[Processing Error] Corrupted SVO / Failed Conversion"
@@ -192,11 +199,11 @@ def run_processing(
                     trajectory_dir,
                     metadata_record["wrist_cam_serial"],
                     metadata_record["ext1_cam_serial"],
-                    metadata_record["ext2_cam_serial"],
                     metadata_record["ext1_cam_extrinsics"],
-                    metadata_record["ext2_cam_extrinsics"],
                     resolution=depth_resolution,
                     frequency=depth_frequency,
+                    ext2_serial=metadata_record["ext2_cam_serial"] if num_cameras == 3 else None,
+                    ext2_extrinsics=metadata_record["ext2_cam_extrinsics"] if num_cameras == 3 else None,
                 )
                 if not valid_convert:
                     errored_paths[outcome][rel_trajectory_dir] = "[Processing Error] Corrupted SVO / Failed Conversion"

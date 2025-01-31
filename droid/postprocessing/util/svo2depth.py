@@ -99,11 +99,11 @@ def convert_depths(
     demo_dir: Path,
     wrist_serial: str,
     ext1_serial: str,
-    ext2_serial: str,
     ext1_extrinsics: List[float],
-    ext2_extrinsics: List[float],
     resolution: tuple,
     frequency: int,
+    ext2_serial: str=None,
+    ext2_extrinsics: List[float]=None,
     do_fuse: bool = False,
 ) -> Tuple[bool, Optional[Dict[str, str]]]:
     """Convert each `serial.svo` to a valid MP4 file, updating the `data_record` path entries in-place."""
@@ -119,21 +119,31 @@ def convert_depths(
     #       - `pos` is (x, y, z) offset --> moving left of robot is +y, moving right is -y
     #       - `rot` is rotation offset as Euler (`R.from_matrix(rmat).as_euler("xyz")`)
     #   => Therefore we can compute `left = ext1_serial if ext1_extrinsics[1] > ext2_extrinsics[1]`
-    ext1_y, ext2_y = ext1_extrinsics[1], ext2_extrinsics[1]
+    ext1_y, ext2_y = ext1_extrinsics[1], ext2_extrinsics[1] if ext2_extrinsics is not None else -1
     left_serial = ext1_serial if ext1_y > ext2_y else ext2_serial
     right_serial = ext2_serial if left_serial == ext1_serial else ext1_serial
 
     # Create Dictionary of SVO/MP4 Paths
     rel_svo_path, rel_depth_path = svo_path.relative_to(data_dir), depth_path.relative_to(data_dir)
-    record_paths = {
-        "wrist_svo_path": str(rel_svo_path / f"{wrist_serial}.svo"),
-        "wrist_depth_path": str(rel_depth_path / f"{wrist_serial}"),
-        "ext1_svo_path": str(rel_svo_path / f"{ext1_serial}.svo"),
-        "ext1_depth_path": str(rel_depth_path / f"{ext1_serial}"),
-        "ext2_svo_path": str(rel_svo_path / f"{ext2_serial}.svo"),
-        "ext2_depth_path": str(rel_depth_path / f"{ext2_serial}"),
-        "left_depth_path": str(rel_depth_path / f"{left_serial}"),
-        "right_depth_path": str(rel_depth_path / f"{right_serial}"),
-    }
+    if ext2_serial is None:
+        record_paths = {
+            "wrist_svo_path": str(rel_svo_path / f"{wrist_serial}.svo"),
+            "wrist_depth_path": str(rel_depth_path / f"{wrist_serial}"),
+            "ext1_svo_path": str(rel_svo_path / f"{ext1_serial}.svo"),
+            "ext1_depth_path": str(rel_depth_path / f"{ext1_serial}"),
+            "left_depth_path": str(rel_depth_path / f"{left_serial}"),
+            "right_depth_path": str(rel_depth_path / f"{right_serial}"),
+        }
+    else:
+        record_paths = {
+            "wrist_svo_path": str(rel_svo_path / f"{wrist_serial}.svo"),
+            "wrist_depth_path": str(rel_depth_path / f"{wrist_serial}"),
+            "ext1_svo_path": str(rel_svo_path / f"{ext1_serial}.svo"),
+            "ext1_depth_path": str(rel_depth_path / f"{ext1_serial}"),
+            "ext2_svo_path": str(rel_svo_path / f"{ext2_serial}.svo"),
+            "ext2_depth_path": str(rel_depth_path / f"{ext2_serial}"),
+            "left_depth_path": str(rel_depth_path / f"{left_serial}"),
+            "right_depth_path": str(rel_depth_path / f"{right_serial}"),
+        }
 
     return True, record_paths

@@ -24,11 +24,11 @@ If you encounter issues during setup, please raise them as issues in this github
 
 ---------
 ## Dataset creation
-###  a) Data collection / teleoperation
+###  A) Data collection / teleoperation
 
 TODO : explain the process of data collection
 
-###  b) Dataset conversion HDF5 to RLDS format
+###  B) Dataset conversion HDF5 to RLDS format
 
 Once the data is collected, it should be recorder in the volume `/app/data` indicated in the file `.docker/single_computer/docker-compose.yaml`. The folder contains success and failure recording of all the tasks sorted by dates of collection :
 ```
@@ -48,11 +48,38 @@ Once the data is collected, it should be recorder in the volume `/app/data` indi
 
 ```
 In order to adapt the dataset from HDF5 format to the RLDS format used in [Open-X dataset](https://robotics-transformer-x.github.io/) (for example), you need to do the following steps:
-- Convert video of trajectories from `.svo` to `.mp4` by calling the script `svo_to_mp4.py`
+#### a. Convert videos from .svo to .mp4
+Convert video of trajectories from `.svo` to `.mp4` by calling the script `svo_to_mp4.py`; the video should show both stereo camera views concatenated horizontally.
+
+Run from DROID directory root with: `'
+
+Set a data directory on top-level and either softlink to your dataset or move it inside.
+Check the file to understand each param
+```
+python scripts/convert/svo_to_mp4.py \
+    --lab="<Your_lab_name>" \
+    --data_dir="<Path to the success/failure data folder>" \
+    --lab_agnostic=False  \
+    --do_index=True \
+    --do_process=True \
+    --process_failures=False \
+    --extract_MP4_data=True \
+    --extract_depth_data=False \
+    --start_date="2025-01-30" \
+    --end_date="2025-01-31" \
+    --num_cameras=2
+```
+
+/!\ Ensure you have installed a version of ZED SDK between `3.8` and `4.0`
+#### b. Convert dataset to TFDS
 - Use the conversion script `scripts/postprocess_rlds.py` to process all the converted data to create a RLDS dataset. Note: under the hood it uses the [DROID dataset builder repo](https://github.com/alexcbb/droid_dataset_builder) that is added as a submodule to this repo. 
 
+TODO LIST
+- [] Add a parameter to select the data by dates
+- [] Add a parameter to handle train/val split (if required)
+- [] Add a parameter to grab language instruction
 
-### c) Dataset visualization
+### C) Dataset visualization
 TODO : create a visualization tool as in HF LeRobot. 
 
 

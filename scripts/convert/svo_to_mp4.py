@@ -18,36 +18,12 @@ import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Tuple
 
 import pyrallis
 
 from droid.postprocessing.parse import parse_datetime
 from droid.postprocessing.stages import run_indexing, run_processing
-from droid.postprocessing.util.validate import validate_user2id
-
-# Registry of known labs and associated users. Note that we canonicalize names as "<F>irst <L>ast".
-#   => We map each "name" to a unique ID (8 characters); when adding new users, make sure to pick a unique ID!
-#         + Simple ID generator --> python -c "import uuid; print(str(uuid.uuid4())[:8])"
-# fmt: off
-REGISTERED_MEMBERS: Dict[str, Dict[str, str]] = {
-    "Lab Name": {
-        "First Last": "4b1a56cc",
-    },
-}
-validate_user2id(REGISTERED_MEMBERS)
-
-# Try to be as consistent as possible using the "canonical" names in the dictionary above; however, for unavoidable
-# cases (e.g., unfortunate typos, using names/nicknames interchangeably), update the dictionary below!
-REGISTERED_ALIASES: Dict[str, Tuple[str, str]] = {
-    **{user: (lab, user) for lab, users in REGISTERED_MEMBERS.items() for user in users},
-
-    # Note: Add duplicates/typos below (follow format)!
-    **{
-        "First Last": ("Lab Name", "First Last"),
-    }
-}
-# fmt: on
+from scripts.postprocess import REGISTERED_ALIASES, REGISTERED_MEMBERS
 
 @dataclass
 class DROIDConversionConfig:
@@ -64,10 +40,13 @@ class DROIDConversionConfig:
     process_failures: bool = False                  # Whether to include failures in the processing stage
     extract_MP4_data: bool = True                   # Whether to extract MP4 data from the SVO files
     extract_depth_data: bool = False                # Whether to extract depth data from the SVO files
+    num_cameras: int = 3                            # Number of cameras in the SVO files
+    fps: int = None                                   # FPS for the MP4 files
 
     # Important :: Only update once you're sure *all* demonstrations prior to this date have been processed!
     #   > If not running low on disk, leave alone!
-    start_date: str = "2023-01-01"                  # Start indexing/processing/uploading demos starting from this date
+    start_date: str = "2025-01-30"                  # Start indexing/processing/uploading demos starting from this date
+    end_date: str = "2025-01-31"                    # End indexing/processing/uploading demos starting from this date
 
     # Cache Parameters
     cache_dir: Path = Path("cache/postprocessing")  # Relative path to `cache` directory; defaults to repository root
@@ -102,6 +81,7 @@ def postprocess(cfg: DROIDConversionConfig) -> None:
     # === Run Post-Processing Stages ===
     try:
         start_datetime = parse_datetime(cfg.start_date, mode="day")
+        end_datetime=parse_datetime(cfg.end_date, mode="day")
 
         # Stage 1 --> "Indexing"
         if cfg.do_index:
@@ -118,6 +98,8 @@ def postprocess(cfg: DROIDConversionConfig) -> None:
                 process_failures=cfg.process_failures,
                 lab_agnostic=cfg.lab_agnostic,
                 search_existing_metadata=True,
+                end_datetime=end_datetime,
+                num_cameras=cfg.num_cameras,
             )
         else:
             print("[*] Stage 1 =>> Skipping Indexing!")
@@ -136,6 +118,8 @@ def postprocess(cfg: DROIDConversionConfig) -> None:
                 extract_MP4_data=cfg.extract_MP4_data,
                 extract_depth_data=cfg.extract_depth_data,
                 search_existing_metadata=True,
+                num_cameras=cfg.num_cameras,
+                fps=cfg.fps,
             )
         else:
             print("[*] Stage 2 =>> Skipping Processing!")

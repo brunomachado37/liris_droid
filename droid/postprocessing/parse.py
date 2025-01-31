@@ -13,7 +13,7 @@ import os
 import h5py
 import json
 
-from droid.postprocessing.schema import TRAJECTORY_SCHEMA
+from droid.postprocessing.schema import TRAJECTORY_SCHEMA, TRAJECTORY_SCHEMA_2_CAM
 
 
 def parse_datetime(date_str: str, mode="day") -> datetime:
@@ -93,15 +93,14 @@ def parse_timestamp(trajectory_dir: Path) -> str:
 
 
 def parse_trajectory(
-    data_dir: Path, trajectory_dir: Path, uuid: str, lab: str, user: str, user_id: str, timestamp: str
+    data_dir: Path, trajectory_dir: Path, uuid: str, lab: str, user: str, user_id: str, timestamp: str, num_cameras: int=3
 ) -> Tuple[bool, Optional[Dict]]:
     """Attempt to parse `<trajectory>/trajectory.h5` and extract relevant elements into a JSON-valid record."""
     try:
         with h5py.File(trajectory_dir / "trajectory.h5", "r") as h5:
             assert "action" in h5.keys(), "Incomplete HDF5 file; no actual trajectory data logged!"
             trajectory_record, attrs, trajectory_length = {}, h5.attrs, int(h5["action"]["joint_position"].shape[0])
-            exts = ["ext1", "ext2"]
-
+            exts = ["ext1", "ext2"] if num_cameras == 3 else ["ext1"]
             # Extract Camera Information
             camera_types, camera_extrinsics = h5["observation"]["camera_type"], h5["observation"]["camera_extrinsics"]
             ctype2extrinsics = {
@@ -115,8 +114,9 @@ def parse_trajectory(
             # Compute Relative Path to `trajectory.h5`
             hdf5_path = str(trajectory_dir.relative_to(data_dir) / "trajectory.h5")
 
+            traj_scheme = TRAJECTORY_SCHEMA_2_CAM if num_cameras == 2 else TRAJECTORY_SCHEMA
             # Populate Record
-            for cname, etl_fn in TRAJECTORY_SCHEMA.items():
+            for cname, etl_fn in traj_scheme.items():
                 trajectory_record[cname] = etl_fn(
                     uuid=uuid,
                     lab=lab,
