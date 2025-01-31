@@ -7,7 +7,7 @@ from droid.calibration.calibration_utils import load_calibration_info
 from droid.camera_utils.info import camera_type_dict
 from droid.camera_utils.wrappers.multi_camera_wrapper import MultiCameraWrapper
 from droid.misc.parameters import hand_camera_id, nuc_ip
-from droid.misc.server_interface import ServerInterface
+from droid.misc.server_interface import ServerInterface, RobotInterface
 from droid.misc.time import time_ms
 from droid.misc.transformations import change_pose_frame
 
@@ -31,9 +31,7 @@ class RobotEnv(gym.Env):
         self.control_hz = 15
 
         if nuc_ip is None:
-            from franka.robot import FrankaRobot
-
-            self._robot = FrankaRobot()
+            self._robot = RobotInterface()
         else:
             self._robot = ServerInterface(ip_address=nuc_ip)
 
