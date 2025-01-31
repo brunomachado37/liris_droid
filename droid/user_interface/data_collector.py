@@ -82,8 +82,6 @@ class DataCollecter:
             save_filepath = None
             recording_folderpath = None
         else:
-            if len(self.full_cam_ids) != 6:
-                raise ValueError("WARNING: User is trying to collect data without all three cameras running!")
             save_filepath = os.path.join(self.failure_logdir, info["time"], "trajectory.h5")
             recording_folderpath = os.path.join(self.failure_logdir, info["time"], "recordings")
             if not os.path.isdir(recording_folderpath):
