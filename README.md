@@ -87,6 +87,9 @@ If you encounter a `CUDA error: Failed call to cuDeviceGet: CUDA_ERROR_NOT_INITI
 Your dataset is now ready, let's visalize it to verify the content.
 
 ### C) Dataset visualization
-TODO : create a visualization tool as in HF LeRobot. 
-
+A simple solution to quickly checkup your new created dataset it to launch the following script:
+```
+python scripts/droid_dataset_builder/visualize_dataset.py droid
+```
+/!\ Don't forget to change the `WANDB_ENTITY` value inside the file to your own W&B id in order to log the final results.
 
