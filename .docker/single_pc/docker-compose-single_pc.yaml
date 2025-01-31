@@ -1,0 +1,42 @@
+version: "3"
+
+services: 
+  single_pc:
+    image: ghcr.io/droid-dataset/droid:panda
+    environment:
+      DISPLAY: ${DISPLAY}
+      XAUTHORITY: ${DOCKER_XAUTH}
+      ROBOT_TYPE: panda
+      LIBFRANKA_VERSION: 0.9.0
+      ROBOT_IP: 192.168.10.100
+      LAPTOP_IP: 192.168.10.4
+      NVIDIA_VISIBLE_DEVICES: all
+      ANDROID_ADB_SERVER_ADDRESS: host.docker.internal
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ${DOCKER_XAUTH}:${DOCKER_XAUTH}
+      - /home/panda/liris_droid/droid/misc/parameters.py:/app/droid/misc/parameters.py
+      - /home/panda/liris_droid/droid/calibration/calibration_info.json:/app/droid/calibration/calibration_info.json
+      - /home/panda/liris_droid/data:/app/data
+      - /home/panda/liris_droid/cache:/app/cache
+      - /home/panda/liris_droid/config/panda/franka_hardware.yaml:/root/miniconda3/envs/polymetis/lib/python3.8/site-packages/polymetis/conf/robot_client/franka_hardware.yaml
+      - /home/panda/liris_droid/config/panda/franka_panda.yaml:/root/miniconda3/envs/polymetis/lib/python3.8/site-packages/polymetis/conf/robot_model/franka_panda.yaml
+      - /home/panda/liris_droid/config/panda/franka_hand.yaml:/root/miniconda3/envs/polymetis/lib/python3.8/site-packages/polymetis/conf/gripper/franka_hand.yaml
+    build: 
+      context: ../../
+      dockerfile: .docker/single_pc/Dockerfile.single_pc
+      args:
+        ROOT_DIR: /home/panda/liris_droid/
+        ROBOT_TYPE: panda
+        ROBOT_IP: 192.168.10.100
+    devices:
+      - "/dev:/dev"
+    runtime: nvidia
+    privileged: true
+    network_mode: "host"
+    cap_add:
+      - SYS_NICE
+    ulimits:
+      rtprio: 99
+      memlock: 102400
+    command: python /app/scripts/main.py
