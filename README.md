@@ -31,22 +31,28 @@ TODO : explain the process of data collection
 ###  b) Dataset conversion HDF5 to RLDS format
 
 Once the data is collected, it should be recorder in the volume `/app/data` indicated in the file `.docker/single_computer/docker-compose.yaml`. The folder contains success and failure recording of all the tasks sorted by dates of collection :
+```
+<data_dir>
+├─ success
+|   ├─ <YYYY>-<MM>-<DD> # Day of trajectory selection
+|   |   ├─ <Day>_<Mon>_<DD>_<HH>:<MM>:<SS>_<YYYY> # Individual trajectory directory
+|   |   |   ├─ trajectory.h5 # HDF5 file containing states, actions, camera data
+|   |   |   └── recordings
+|   |   |       └── SVO
+|   |   |           ├─ <camera_1_id>.svo
+|   |   |           └── <camera_2_id>.svo
+|   |   ├─ ...
+|   ├─ ...
+└── failure
+    ├─...
 
 ```
-app
-└── data
-    ├─ success
-    |   ├─ <year-month-day>
-    |   |   ├─ <Day_name-Month-Day_num-Hour-Min-Sec-Year>
-    |   |   |   ├─ recordings
-    |   |   |   |   ├─ SVO
-    |   |   |   |   |   ├─ <camera_1_id>.svo
-    |   |   |   |   |   ├─ <camera_2_id>.svo
-    |   |   |   └── trajectory.h5
-    |   └──...
-    └── failure
-        ├─...
+In order to adapt the dataset from HDF5 format to the RLDS format used in [Open-X dataset](https://robotics-transformer-x.github.io/) (for example), you need to do the following steps:
+- Convert video of trajectories from `.svo` to `.mp4` by calling the script `svo_to_mp4.py`
+- Use the conversion script `scripts/postprocess_rlds.py` to process all the converted data to create a RLDS dataset. Note: under the hood it uses the [DROID dataset builder repo](https://github.com/alexcbb/droid_dataset_builder) that is added as a submodule to this repo. 
 
-```
-In order to adapt the dataset from HDF5 format to the RLDS format used in [Open-X dataset](https://robotics-transformer-x.github.io/) (for example), we need to use the conversion script `scripts/convert/to_tfrecords.py`
+
+### c) Dataset visualization
+TODO : create a visualization tool as in HF LeRobot. 
+
 
