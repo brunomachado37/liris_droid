@@ -47,14 +47,12 @@ Once the data is collected, it should be recorder in the volume `/app/data` indi
     ├─...
 
 ```
-In order to adapt the dataset from HDF5 format to the RLDS format used in [Open-X dataset](https://robotics-transformer-x.github.io/) (for example), you need to do the following steps:
+In order to adapt the dataset from HDF5 format to the RLDS format used in [Open-X dataset](https://robotics-transformer-x.github.io/) (for example), you need to perform the following steps:
 #### a. Convert videos from .svo to .mp4
-Convert video of trajectories from `.svo` to `.mp4` by calling the script `svo_to_mp4.py`; the video should show both stereo camera views concatenated horizontally.
+/!\ Ensure you have installed a version of ZED SDK between `>=3.8 & <4.1` in order to perform the following.
+For the dataset directory, it is recommanded to create a `data` folder in the top-level of the repo where you either store directly the `success/failure` folders or just symlink them to perform the conversion.
 
-Run from DROID directory root with: `'
-
-Set a data directory on top-level and either softlink to your dataset or move it inside.
-Check the file to understand each param
+All the videos of the dataset are recorded as `SVO` files, which is a format from ZED cameras. It is required to convert the video of each trajectory from `.svo` to `.mp4`. You'll have to call the following script in order to do so:
 ```
 python scripts/convert/svo_to_mp4.py \
     --lab="<Your_lab_name>" \
@@ -67,17 +65,26 @@ python scripts/convert/svo_to_mp4.py \
     --extract_depth_data=False \
     --start_date="2025-01-30" \
     --end_date="2025-01-31" \
-    --num_cameras=2
+    --num_cameras=2 \
+    --fps=25
 ```
+Check the parameters for your own use inside of the `svo_to_mp4.py` script.
 
-/!\ Ensure you have installed a version of ZED SDK between `3.8` and `4.0`
 #### b. Convert dataset to TFDS
-- Use the conversion script `scripts/postprocess_rlds.py` to process all the converted data to create a RLDS dataset. Note: under the hood it uses the [DROID dataset builder repo](https://github.com/alexcbb/droid_dataset_builder) that is added as a submodule to this repo. 
+A tfds dataset builder is already created under `scripts/droid_dataset_builder/droid` inside a modified fork. You can modify it to your own needs.
+For example, the `scripts/droid_dataset_builder/droid/droid.py` file needs to be changed by updating the `DATA_DIR` value to the path to your dataset.
+Two other important parameters needs to be set to adapt to your machine : `N_WORKERS` and `MAX_PATHS_IN_MEMORY` inside of the `Droid` class 
 
-TODO LIST
-- [] Add a parameter to select the data by dates
-- [] Add a parameter to handle train/val split (if required)
-- [] Add a parameter to grab language instruction
+Then, when everything is correct, execute the following:
+```
+cd scripts/droid_dataset_builder/droid &
+tfds build --overwrite
+```
+/!\ The dataset will be stored in `~/tensorflow_datasets/droid` folder, ensure no dataset was already present in order to not overwrite it. Otherwise, copy-past it somewhere else. 
+
+If you encounter a `CUDA error: Failed call to cuDeviceGet: CUDA_ERROR_NOT_INITIALIZED: initialization error` error, launch the following command to pass the processing into the CPU : `CUDA_VISIBLE_DEVICES="" tfds build --overwrite`
+
+Your dataset is now ready, let's visalize it to verify the content.
 
 ### C) Dataset visualization
 TODO : create a visualization tool as in HF LeRobot. 
