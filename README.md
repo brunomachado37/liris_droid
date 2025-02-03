@@ -87,7 +87,7 @@ If you encounter a `CUDA error: Failed call to cuDeviceGet: CUDA_ERROR_NOT_INITI
 Your dataset is now ready, let's visalize it to verify the content.
 
 ### C) Dataset visualization
-A simple solution to quickly checkup your new created dataset it to launch the following script:
+A simple solution to quickly checkup your new created dataset is to launch the following script:
 ```
 python scripts/droid_dataset_builder/visualize_dataset.py droid
 ```
