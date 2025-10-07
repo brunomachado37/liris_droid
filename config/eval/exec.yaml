@@ -1,0 +1,4 @@
+defaults:
+  - algo: openvla
+
+trajectory_folderpath: /app/data/success/2025-02-06/Thu_Feb_6_15:16:58_2025

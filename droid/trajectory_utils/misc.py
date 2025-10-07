@@ -503,3 +503,96 @@ def visualize_trajectory(
     traj_reader.close()
     if recording_folderpath:
         camera_reader.disable_cameras()
+
+
+def execute_policy_with_dataset_images(
+    env, policy, filepath, recording_folderpath,
+):
+    # Prepare Trajectory Reader #
+    traj_reader = TrajectoryReader(filepath, read_images=True)
+
+    # Retrieve video recordings # 
+    camera_kwargs = defaultdict(lambda: {"image": True})
+    camera_reader = RecordedMultiCameraWrapper(recording_folderpath, camera_kwargs)
+
+    horizon = traj_reader.length()
+
+    l1 = []
+
+    for i in range(horizon - 1):
+        start = time.time()
+
+        # Get HDF5 Data #
+        timestep = traj_reader.read_timestep()
+
+        # Get Recorded Data #
+        timestamp_dict = timestep["observation"]["timestamp"]["cameras"]
+        camera_type_dict = {
+            k: camera_type_to_string_dict[v] for k, v in timestep["observation"]["camera_type"].items()
+        }
+        camera_obs = camera_reader.read_cameras(
+            index=i, camera_type_dict=camera_type_dict, timestamp_dict=timestamp_dict
+        )
+        camera_failed = camera_obs is None
+
+        # Add Data To Timestep #
+        if not camera_failed:
+            timestep["observation"].update(camera_obs)
+        else:
+            raise(ValueError("Observations were not loaded"))
+
+        # Move To Initial Position #
+        if i == 0:
+            init_joint_position = timestep["observation"]["robot_state"]["joint_positions"]
+            init_gripper_position = timestep["observation"]["robot_state"]["gripper_position"]
+            action = np.concatenate([init_joint_position, [init_gripper_position]])
+            env.update_robot(action, action_space="joint_position", blocking=True)
+
+        # Get Ground Truth Action In Desired Action Space #
+        arm_action = timestep["action"][env.action_space]
+        gripper_action = timestep["action"][f"gripper_{env.gripper_action_space}"]
+        gt_action = np.concatenate([arm_action, [gripper_action]])
+        controller_info = timestep["observation"]["controller_info"]
+        movement_enabled = controller_info.get("movement_enabled", True)
+
+        if movement_enabled:
+            # Get Policy Action #
+            action = policy(timestep["observation"])
+
+            # print(f"Action: {action}")
+            # print(f"GT Action: {gt_action}")
+            print(f"L1 loss: {sum(abs(action - gt_action))/len(action)}")
+            l1.append(abs(action - gt_action))
+
+            # Follow Trajectory #
+            env.step(action)
+
+        # Regularize Control Frequency #
+        if 1/(time.time() - start) > env.control_hz:
+            time.sleep((1 / env.control_hz) - (time.time() - start))
+
+    print(f"Average L1: {(sum(l1)/len(l1))[0]:.2f}")
+
+
+def execute_policy_with_camera_images(
+    env, policy, limit_horizon, randomize_initial_position
+):
+    env.reset(randomize=randomize_initial_position)
+
+    for i in range(limit_horizon):
+        start = time.time()
+
+        # Get Observation #
+        obs_dict = env.get_observation()
+
+        # Get Policy Action #
+        action = policy(obs_dict)
+
+        # Execute Action #
+        env.step(action)
+
+        # Regularize Control Frequency #
+        if 1/(time.time() - start) > env.control_hz:
+            time.sleep((1 / env.control_hz) - (time.time() - start))
+
+        print(f"Control Frequency: {1/(time.time() - start):.1f} Hz")

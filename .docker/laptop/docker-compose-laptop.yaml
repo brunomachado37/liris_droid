@@ -2,33 +2,33 @@ version: "3"
 
 services: 
   laptop_setup:
-    image: ghcr.io/droid-dataset/droid_laptop:${ROBOT_TYPE}
+    image: ghcr.io/droid-dataset/droid_laptop:panda
     environment:
-      ROOT_DIR: ${ROOT_DIR}
       DISPLAY: ${DISPLAY}
       XAUTHORITY: ${DOCKER_XAUTH}
-      ROBOT_TYPE: ${ROBOT_TYPE}
-      LIBFRANKA_VERSION: ${LIBFRANKA_VERSION}
-      NUC_IP: ${NUC_IP}
-      ROBOT_IP: ${ROBOT_IP}
-      LAPTOP_IP: ${LAPTOP_IP}
+      ROBOT_TYPE: panda
+      LIBFRANKA_VERSION: 0.9.0
+      NUC_IP: 192.168.10.4
+      ROBOT_IP: 192.168.10.100
+      LAPTOP_IP: 192.168.10.4
       NVIDIA_VISIBLE_DEVICES: all
       ANDROID_ADB_SERVER_ADDRESS: host.docker.internal
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - ${DOCKER_XAUTH}:${DOCKER_XAUTH}
-      - ${ROOT_DIR}/droid/misc/parameters.py:/app/droid/misc/parameters.py
-      - ${ROOT_DIR}/droid/calibration/calibration_info.json:/app/droid/calibration/calibration_info.json
-      - ${ROOT_DIR}/data:/app/data
-      - ${ROOT_DIR}/cache:/app/cache
+      - /home/panda/liris_droid/droid/misc/parameters.py:/app/droid/misc/parameters.py
+      - /home/panda/liris_droid/droid/calibration/calibration_info.json:/app/droid/calibration/calibration_info.json
+      - /home/panda/liris_droid/data:/app/data
+      - /home/panda/liris_droid/cache:/app/cache
+      - /home/panda/liris_droid/checkpoints:/app/checkpoints
     build: 
       context: ../../
       dockerfile: .docker/laptop/Dockerfile.laptop
       args:
-        ROOT_DIR: ${ROOT_DIR}
-        ROBOT_TYPE: ${ROBOT_TYPE}
-        NUC_IP: ${NUC_IP}
-        ROBOT_IP: ${ROBOT_IP}
+        ROOT_DIR: /home/panda/liris_droid
+        ROBOT_TYPE: panda
+        NUC_IP: 192.168.10.4
+        ROBOT_IP: 192.168.10.100
     devices:
       - "/dev:/dev"
     runtime: nvidia

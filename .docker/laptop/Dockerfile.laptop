@@ -1,11 +1,11 @@
 FROM nvidia/cuda:12.1.0-devel-ubuntu22.04
 
 # build args
-ARG ROBOT_TYPE=${ROBOT_TYPE}
-ARG LIBFRANKA_VERSION=${LIBFRANKA_VERSION}
-ARG ROBOT_IP=${ROBOT_IP}
-ARG NUC_IP=${NUC_IP}
-ARG NUC_ROBOT_CONFIG_DIR=/app/config/${ROBOT_TYPE}
+ARG ROBOT_TYPE=panda
+ARG LIBFRANKA_VERSION=0.9.0
+ARG ROBOT_IP=192.168.10.100
+ARG NUC_IP=192.168.10.4
+ARG NUC_ROBOT_CONFIG_DIR=/app/config/panda
 ARG NUC_OCULUS_DIR=/app/droid/oculus_reader
 ARG NUC_POLYMETIS_DIR=/app/droid/fairo/polymetis
 ARG NUC_POLYMETIS_CONFIG_DIR=${NUC_POLYMETIS_DIR}/polymetis/conf
@@ -26,7 +26,7 @@ WORKDIR /app
 # base system installations
 RUN apt-get update && \
     apt-get install -y software-properties-common build-essential sudo git curl wget python3-pip libspdlog-dev \
-    libeigen3-dev lsb-release ffmpeg libsm6 libxext6 zstd && \
+    libeigen3-dev lsb-release ffmpeg libsm6 libxext6 zstd nano && \
     apt-get upgrade -y
 
 # install miniconda 
@@ -38,7 +38,7 @@ RUN wget \
 ENV PATH /root/miniconda3/bin:$PATH
 
 # create conda environment
-RUN conda create -n "robot" python=3.7
+RUN conda create -n "robot" python=3.8
 SHELL ["conda", "run", "-n", "robot", "/bin/bash", "-c"]
 
 # install the zed sdk
@@ -60,7 +60,7 @@ RUN apt-get update -y || true ; apt-get install --no-install-recommends lsb-rele
     rm ZED_SDK_Linux_Ubuntu${UBUNTU_RELEASE_YEAR}.run && \
     rm -rf /var/lib/apt/lists/*
 RUN conda install -c conda-forge libstdcxx-ng requests # required for pyzed
-RUN python /usr/local/zed/get_python_api.py && python -m pip install --ignore-installed /app/pyzed-4.0-cp37-cp37m-linux_x86_64.whl
+RUN python /usr/local/zed/get_python_api.py && python -m pip install --ignore-installed /app/pyzed-4.0-cp38-cp38-linux_x86_64.whl
 
 # install oculus reader
 RUN add-apt-repository universe && \
@@ -90,6 +90,10 @@ RUN find /app/scripts/server -type f -name "launch_server.sh" -exec sed -i 's|~|
 # set polymetis config files
 RUN cp ${NUC_ROBOT_CONFIG_DIR}/franka_hardware.yaml ${NUC_POLYMETIS_CONFIG_DIR}/robot_client/franka_hardware.yaml && \
     cp ${NUC_ROBOT_CONFIG_DIR}/franka_panda.yaml ${NUC_POLYMETIS_CONFIG_DIR}/robot_model/franka_panda.yaml
+
+# Install Baseline Dependencies
+RUN pip3 install timm==0.9.10 tokenizers==0.19.1 torch==2.2.0 torchvision==0.17.0 transformers==4.40.1 accelerate==0.25.0 hydra-core packaging ninja
+RUN pip3 install "flash-attn==2.5.5" --no-build-isolation
 
 # start the server
 RUN chmod +x /app/.docker/laptop/entrypoint.sh

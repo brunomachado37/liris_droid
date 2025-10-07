@@ -1,0 +1,18 @@
+# @package _group_
+checkpoint_path: "/app/checkpoints/OpenVLA/openvla-7b+liris_pnp_apple+b16+lr-0.0005+lora-r32+dropout-0.0--15k_steps"
+action_space: "cartesian_velocity"
+gripper_action_space: "position"
+
+policy:
+  _target_: droid.evaluation.policy_wrapper_liris.PolicyWrapperOpenVLA
+model:
+  _target_: transformers.AutoModelForVision2Seq.from_pretrained
+  pretrained_model_name_or_path: ${algo.checkpoint_path}
+  attn_implementation: "flash_attention_2"    # [Optional] Requires `flash_attn`
+  torch_dtype: 'auto'
+  low_cpu_mem_usage: True
+  trust_remote_code: True
+transform:
+  _target_: transformers.AutoProcessor.from_pretrained
+  pretrained_model_name_or_path: ${algo.checkpoint_path}
+  trust_remote_code: True

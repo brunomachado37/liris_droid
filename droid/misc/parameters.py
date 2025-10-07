@@ -2,12 +2,12 @@ import os
 from cv2 import aruco
 
 # Robot Params #
-nuc_ip = None
+nuc_ip = "192.168.10.4"         # None if using single_pc docker
 robot_ip = "192.168.10.100"
 laptop_ip = "192.168.10.4"
 sudo_password = "panda"
 robot_type = "panda"  # 'panda' or 'fr3'
-gripper_type = "franka" # 'franka' or 'robotiq'
+gripper_type = "robotiq" # 'franka' or 'robotiq'
 robot_serial_number = "295341-1325717"
 
 # Camera ID's #
@@ -27,3 +27,9 @@ ubuntu_pro_token = ""
 # Code Version [DONT CHANGE] #
 droid_version = "1.3"
 
+# Evaluation language instruction
+language_command = 'Pick up the peach and put it into the red bowl'
+unnorm_key = "liris_pnp_peach"
+
+
+# 'Take the apple and drop it into the red bowl',

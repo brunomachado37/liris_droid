@@ -2,12 +2,12 @@
 FROM ubuntu:bionic
 
 # build args
-ARG ROBOT_TYPE=${ROBOT_TYPE}
-ARG LIBFRANKA_VERSION=${LIBFRANKA_VERSION}
-ARG ROBOT_IP=${ROBOT_IP} 
-ARG NUC_IP=${NUC_IP}
+ARG ROBOT_TYPE=panda
+ARG LIBFRANKA_VERSION=0.9.0
+ARG ROBOT_IP=192.168.10.100
+ARG NUC_IP=192.168.10.4
 ARG NUC_POLYMETIS_DIR=/app/droid/fairo/polymetis
-ARG NUC_ROBOT_CONFIG_DIR=/app/config/${ROBOT_TYPE}
+ARG NUC_ROBOT_CONFIG_DIR=/app/config/panda
 ARG NUC_POLYMETIS_CONFIG_DIR=${NUC_POLYMETIS_DIR}/polymetis/conf
 
 # runtime env vars
@@ -19,7 +19,7 @@ ENV NUC_IP=${NUC_IP}
 # base system installations
 RUN apt-get update && \
     apt-get install -y software-properties-common build-essential sudo git curl wget python3-pip libspdlog-dev \
-    libeigen3-dev lsb-release ffmpeg libsm6 libxext6 && \
+    libeigen3-dev lsb-release ffmpeg libsm6 libxext6 nano && \
     apt-get upgrade -y 
 
 # install latest cmake version
@@ -45,6 +45,7 @@ WORKDIR ${NUC_POLYMETIS_DIR}
 RUN conda env create -f ./polymetis/environment.yml && \
     conda run -n polymetis-local pip install -e ./polymetis
 SHELL ["conda", "run", "-n", "polymetis-local", "/bin/bash", "-c"]
+RUN pip3 install torch==1.13.1 --index-url https://download.pytorch.org/whl/cpu
 
 # build libfranka and polymetis
 RUN ./scripts/build_libfranka.sh ${LIBFRANKA_VERSION} && \

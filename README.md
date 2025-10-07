@@ -32,6 +32,8 @@ If you encounter issues during setup, please raise them as issues in this github
 
 - The oculus APK and setup, docker instalation, and x11 forwarding configuration should be performed just like in the laptop setup.
 
+- **IMPORTANT:** There is no problem at all in following the setup for 2 PCs (NUC + laptop) and using only one PC. Just configure the NUC and the laptop to have the same IP address (equal to the host PC) and you will have 2 Docker containers running on the same PC for launching the application. Since the communication is done through the network, no additional twitching is needed. This works better than the single PC setup, because it isolates the polymetis dependencies in the NUC container.
+
 ---------
 ## Running application
 
@@ -61,16 +63,16 @@ adb start-server
 
 3. **Zed Cameras**
 
-- Check if both cameras are connected on **USB 3.0** ports. See if they both appear on cheese. 
+- Check if both cameras are connected on **USB 3.0** ports.
 
-- *Troubleshooting:* If cameras don't appear, execute on a terminal:
+- *Troubleshooting:* Execute on a terminal:
 ```
 python -c "exec(\"import pyzed.sl as sl\nprint(sl.Camera.get_device_list())\")"
 ```
 
 - If one of the cameras show as "NOT AVAILABLE", try to disconnect and re-connect them from the PC.
 
-4. **Launch the application**
+4. **Launch the application for data collection**
 
 - To launch the main application use:
 ```
@@ -84,6 +86,31 @@ docker compose -f .docker/single_pc/docker-compose-single_pc.yaml build
 
 - You can also run a bash inside the container, to run different scripts or tests:
 ```
-docker compose -f .docker/single_pc/docker-compose-single_pc.yaml run single_pc bash
+docker compose -f .docker/single_pc/docker-compose-single_pc.yaml run --rm single_pc bash
 ```
 
+4. **Launch the application for policy evaluation**
+
+- To launch the application for policy evaluation, we use 2 containers, one which runs polymetis to send commands to the robot, and another to run the policy. In this way, you can install all the dependencies you require in your policy container, without any conflicts.
+- First we launch the server container, which will work as an intermediary between the robot and your policy:
+```
+docker compose -f .docker/nuc/docker-compose-nuc.yaml up
+```
+- For debugging, you can launch a bash on it by overriding the entrypoint:
+```
+docker compose -f .docker/nuc/docker-compose-nuc.yaml run --entrypoint bash setup_nuc
+```
+
+
+- Then, launch your script using the policy container:
+```
+docker compose -f .docker/laptop/docker-compose-laptop.yaml run --rm laptop_setup YOUR_COMMAND
+```
+
+- Examples:
+```
+docker compose -f .docker/laptop/docker-compose-laptop.yaml run --rm laptop_setup bash
+```
+```
+docker compose -f .docker/laptop/docker-compose-laptop.yaml run --rm laptop_setup python scripts/tests/execute_from_video.py
+```

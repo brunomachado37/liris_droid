@@ -3,7 +3,6 @@ import time
 import numpy as np
 import zerorpc
 
-from droid.franka.robot import FrankaRobot
 
 def attempt_n_times(function_list, max_attempts, sleep_time=1.0):
     if type(function_list) is not list:
@@ -11,7 +10,9 @@ def attempt_n_times(function_list, max_attempts, sleep_time=1.0):
 
     for i in range(max_attempts):
         try:
-            [f() for f in function_list]
+            for f in function_list:
+                f()
+                time.sleep(sleep_time)
             return
         except zerorpc.exceptions.RemoteError as err:
             last_attempt = i == (max_attempts - 1)
@@ -72,7 +73,7 @@ class ServerInterface(BaseInterface):
 
         if launch:
             func_list = [self.launch_controller, self.launch_robot]
-            attempt_n_times(func_list, max_attempts=5)
+            attempt_n_times(func_list, max_attempts=3, sleep_time=10.0)
 
     def establish_connection(self):
         self.robot = zerorpc.Client(heartbeat=20)
@@ -80,11 +81,12 @@ class ServerInterface(BaseInterface):
 
 class RobotInterface(BaseInterface):
     def __init__(self, launch=True):
+        from droid.franka.robot import FrankaRobot
         self.robot = FrankaRobot()
 
         if launch:
             self.launch_controller()
-            time.sleep(5.0)
+            time.sleep(10.0)
             self.launch_robot()
 
     def establish_connection(self):

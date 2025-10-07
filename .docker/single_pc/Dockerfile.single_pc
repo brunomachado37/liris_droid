@@ -79,6 +79,8 @@ RUN pip3 install -e . && \
     pip3 install dm-robotics-manipulation==0.5.0 --no-deps && \
     pip3 install dm-robotics-controllers==0.5.0 --no-deps
 
+# RUN pip3 install torchvision==0.14.1 transformers==4.24.0 timm==0.6.12
+
 # using miniconda instead of anaconda so overwrite sh scripts
 RUN find /app/droid/franka -type f -name "launch_*.sh" -exec sed -i 's/anaconda/miniconda/g' {} \;
 RUN find /app/scripts/server -type f -name "launch_server.sh" -exec sed -i 's/anaconda/miniconda/g' {} \;
